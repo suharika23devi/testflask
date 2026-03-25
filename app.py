@@ -5,7 +5,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# 🔹 Your full schools API
+# 🔹 Full schools API
 FULL_API_URL = "https://devsmartschoolapi.myclassboard.com/api/SmartSchool/MCBGetAllSchools"
 
 # 🔹 Cache
@@ -17,36 +17,51 @@ cached_schools = None
 def search_schools():
     global cached_schools
 
-    name = request.args.get('name', '').lower().strip()
-    city = request.args.get('city', '').lower().strip()
-    state = request.args.get('state', '').lower().strip()
+    # ✅ Get params safely
+    name = request.args.get('name')
+    city = request.args.get('city')
+    state = request.args.get('state')
 
-    print("🔍 INPUT:", name, city, state)  # ✅ Debug log
+    # ✅ Normalize (avoid None issues)
+    name = name.lower().strip() if name else ""
+    city = city.lower().strip() if city else ""
+    state = state.lower().strip() if state else ""
+
+    print("🔍 INPUT:", name, city, state)
 
     try:
-        # ✅ Fetch & cache API data
+        # ✅ Fetch API once (cache)
         if cached_schools is None:
             print("📡 Fetching schools from API...")
             response = requests.get(FULL_API_URL, timeout=10)
-            cached_schools = response.json()
+            data = response.json()
+
+            # ✅ Handle list or nested structure
+            if isinstance(data, dict):
+                cached_schools = data.get("data", [])
+            else:
+                cached_schools = data
 
         results = []
 
         for s in cached_schools:
-            school_name = s.get("schoolName", "").lower()
-            address = s.get("address", "").lower()
+            school_name = str(s.get("schoolName", "")).lower()
+            address = str(s.get("address", "")).lower()
 
             # 🔴 STRICT NAME FILTER (MANDATORY)
-            if name and name not in school_name:
-                continue
+            if name:
+                if name not in school_name:
+                    continue
 
             # 🔴 STRICT CITY FILTER
-            if city and city not in address:
-                continue
+            if city:
+                if city not in address:
+                    continue
 
             # 🔴 STRICT STATE FILTER
-            if state and state not in address:
-                continue
+            if state:
+                if state not in address:
+                    continue
 
             results.append({
                 "schoolID": s.get("schoolID"),
@@ -56,7 +71,11 @@ def search_schools():
 
         print(f"✅ Found {len(results)} matching schools")
 
-        # ✅ Return top 5 only
+        # ✅ If nothing found
+        if not results:
+            return jsonify([])
+
+        # ✅ Return top 5
         return jsonify(results[:5])
 
     except Exception as e:
