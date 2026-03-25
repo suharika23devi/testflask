@@ -33,20 +33,26 @@ def search_schools():
             school_name = s.get("schoolName", "").lower()
             address = s.get("address", "").lower()
 
-            # ✅ Matching logic
-            name_match = name in school_name if name else True
-            city_match = city in address if city else True
-            state_match = state in address if state else True
+            # 🔴 STRICT NAME FILTER (MANDATORY)
+            if name and name not in school_name:
+                continue
 
-            if name_match and city_match and state_match:
-                results.append({
-                    "schoolID": s.get("schoolID"),
-                    "schoolName": s.get("schoolName", "").strip(),
-                    "address": s.get("address", "")
-                })
+            # 🔴 OPTIONAL CITY FILTER
+            if city and city not in address:
+                continue
 
-        # ✅ Limit results to 5
-        return jsonify(results[:30])
+            # 🔴 OPTIONAL STATE FILTER
+            if state and state not in address:
+                continue
+
+            results.append({
+                "schoolID": s.get("schoolID"),
+                "schoolName": s.get("schoolName", "").strip(),
+                "address": s.get("address", "")
+            })
+
+        # ✅ Return top 5 results
+        return jsonify(results[:5])
 
     except Exception as e:
         return jsonify({
@@ -55,7 +61,7 @@ def search_schools():
         }), 500
 
 
-# Health check
+# ❤️ Health check
 @app.route('/', methods=['GET'])
 def home():
     return jsonify({"message": "School Middleware is running"})
