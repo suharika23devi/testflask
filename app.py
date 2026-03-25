@@ -21,9 +21,12 @@ def search_schools():
     city = request.args.get('city', '').lower().strip()
     state = request.args.get('state', '').lower().strip()
 
+    print("🔍 INPUT:", name, city, state)  # ✅ Debug log
+
     try:
         # ✅ Fetch & cache API data
         if cached_schools is None:
+            print("📡 Fetching schools from API...")
             response = requests.get(FULL_API_URL, timeout=10)
             cached_schools = response.json()
 
@@ -37,11 +40,11 @@ def search_schools():
             if name and name not in school_name:
                 continue
 
-            # 🔴 OPTIONAL CITY FILTER
+            # 🔴 STRICT CITY FILTER
             if city and city not in address:
                 continue
 
-            # 🔴 OPTIONAL STATE FILTER
+            # 🔴 STRICT STATE FILTER
             if state and state not in address:
                 continue
 
@@ -51,10 +54,13 @@ def search_schools():
                 "address": s.get("address", "")
             })
 
-        # ✅ Return top 5 results
+        print(f"✅ Found {len(results)} matching schools")
+
+        # ✅ Return top 5 only
         return jsonify(results[:5])
 
     except Exception as e:
+        print("❌ ERROR:", str(e))
         return jsonify({
             "error": "Failed to fetch schools",
             "details": str(e)
